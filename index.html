@@ -469,23 +469,23 @@
 	<h3>MimbleWimble Coin Payment Proof Verifier</h3>
 	<form>
 		<label for="kernel_excess">Kernel excess:</label>
-		<input type="text" size="175" name="kernel_excess" pattern="[0-9a-fA-F]{66}" required value="086bd8520e55d138418727fa06fac9323b08b35ff7c16ec2a5a7698df2e44007f2">
+		<input type="text" size="175" id="kernel_excess" name="kernel_excess" pattern="[0-9a-fA-F]{66}" required value="086bd8520e55d138418727fa06fac9323b08b35ff7c16ec2a5a7698df2e44007f2">
 		<br>
 		<br>
 		<label for="sender_payment_proof_address">Sender payment proof address:</label>
-		<input type="text" size="175" name="sender_payment_proof_address" pattern="[abcdefghijklmnopqrstuvwxyz234567]{56}|[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{52}" required value="qadwjacu2wfln7jxug237fe7pwzguahnkp2xhfr6eokpsyb2uaejj4yd">
+		<input type="text" size="175" id="sender_payment_proof_address" name="sender_payment_proof_address" pattern="[abcdefghijklmnopqrstuvwxyz234567]{56}|[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{52}" required value="qadwjacu2wfln7jxug237fe7pwzguahnkp2xhfr6eokpsyb2uaejj4yd">
 		<br>
 		<br>
 		<label for="amount">Amount:</label>
-		<input type="text" size="175" name="amount" pattern="0\.\d{0,8}[1-9]|[1-9]\d*(?:\.\d{0,8}[1-9])?" required value="0.996">
+		<input type="text" size="175" id="amount" name="amount" pattern="0\.\d{0,8}[1-9]|[1-9]\d*(?:\.\d{0,8}[1-9])?" required value="0.996">
 		<br>
 		<br>
 		<label for="recipient_payment_proof_address">Recipient payment proof address:</label>
-		<input type="text" size="175" name="recipient_payment_proof_address" pattern="[abcdefghijklmnopqrstuvwxyz234567]{56}|[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{52}" required value="rz2x7raufv3rfyo5zk7tbctyxokfdie6xqudxgqqh3p6wg5xqemhv5id">
+		<input type="text" size="175" id="recipient_payment_proof_address" name="recipient_payment_proof_address" pattern="[abcdefghijklmnopqrstuvwxyz234567]{56}|[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{52}" required value="rz2x7raufv3rfyo5zk7tbctyxokfdie6xqudxgqqh3p6wg5xqemhv5id">
 		<br>
 		<br>
 		<label for="recipient_payment_proof_signature">Recipient payment proof signature:</label>
-		<input type="text" size="175" name="recipient_payment_proof_signature" pattern="(?:[0-9a-fA-F]{2}){1,72}" required value="135795266e4f02dedd8c177811f67b57cf701b4873d4e4a6f50fede97bf33ef15a489efb9231fada412735604582ee68437719466d86589d2119f6003ce01f05">
+		<input type="text" size="175" id="recipient_payment_proof_signature" name="recipient_payment_proof_signature" pattern="(?:[0-9a-fA-F]{2}){1,72}" required value="135795266e4f02dedd8c177811f67b57cf701b4873d4e4a6f50fede97bf33ef15a489efb9231fada412735604582ee68437719466d86589d2119f6003ce01f05">
 		<br>
 		<br>
 		<button disabled>Verify Payment Proof</button>
