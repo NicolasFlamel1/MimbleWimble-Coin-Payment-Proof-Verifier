@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="UTF-8">
+
+	<script src="base58.js"></script>
+	<script src="Ed25519-0.0.22.js"></script>
+	<script src="hi-base32-0.5.1.js"></script>
+	<script src="js-sha256-0.10.0.js"></script>
+	<script src="js-sha3-0.8.0.js"></script>
+	<script src="secp256k1-zkp-0.0.29.js"></script>
+	
+	<script>
+	
+		// Use strict
+		"use strict";
+		
+		
+		// Main function
+		window.addEventListener("DOMContentLoaded", async function() {
+		
+			// Initialize Ed25519
+			await Ed25519.initialize();
+			
+			// Initialize secp256k1-zkp
+			await Secp256k1Zkp.initialize();
+			
+			// Get form
+			const form = document.querySelector("form");
+			
+			// Get alerts
+			const alerts = document.querySelector("div");
+			
+			// Form submit event
+			form.addEventListener("submit", function(event) {
+			
+				// Number of decimals
+				const NUMBER_OF_DECIMALS = 9;
+				
+				// Tor address length
+				const TOR_ADDRESS_LENGTH = 56;
+				
+				// MQS address length
+				const MQS_ADDRESS_LENGTH = 52;
+				
+				// Ed25519 signature length
+				const ED25519_SIGNATURE_LENGTH = 64;
+				
+				// Hex number length
+				const HEX_NUMBER_LENGTH = "FF"["length"];
+				
+				// Get button
+				const button = document["activeElement"];
+			
+				// Prevent default
+				event.preventDefault();
+				
+				// Disable button
+				button["disabled"] = true;
+				
+				// Loop while alerts has an alert
+				while(alerts["firstChild"] !== null) {
+				
+					// Remove alert from alerts
+					alerts.removeChild(alerts["firstChild"]);
+				}
+				
+				// Try
+				try {
+				
+					// Get input values
+					const kernelExcess = document.querySelector("input[name=\"kernel_excess\"]")["value"];
+					const senderPaymentProofAddress = document.querySelector("input[name=\"sender_payment_proof_address\"]")["value"];
+					const amount = document.querySelector("input[name=\"amount\"]")["value"];
+					const recipientPaymentProofAddress = document.querySelector("input[name=\"recipient_payment_proof_address\"]")["value"];
+					const recipientPaymentProofSignature = document.querySelector("input[name=\"recipient_payment_proof_signature\"]")["value"];
+					
+					// Check if kernel excess is invalid
+					if(Secp256k1Zkp.isValidCommit(fromHexString(kernelExcess)) !== true) {
+					
+						// Throw error
+						throw "Invalid kernel excess.";
+					}
+					
+					// Check sender payment proof address's length
+					switch(senderPaymentProofAddress["length"]) {
+					
+						// Tor address length
+						case TOR_ADDRESS_LENGTH:
+						
+							// Try
+							try {
+							
+								// Get sender's public key
+								torAddressToPublicKey(senderPaymentProofAddress);
+							}
+							
+							// Catch errors
+							catch(error) {
+							
+								// Throw error
+								throw "Invalid sender payment proof address.";
+							}
+							
+							// Break
+							break;
+						
+						// MQS address length
+						case MQS_ADDRESS_LENGTH:
+						
+							// Try
+							try {
+							
+								// Get sender's public key
+								mqsAddressToPublicKey(senderPaymentProofAddress);
+							}
+							
+							// Catch errors
+							catch(error) {
+							
+								// Throw error
+								throw "Invalid sender payment proof address.";
+							}
+							
+							// Break
+							break;
+					}
+					
+					// Check if amount doesn't have a decimal point
+					let amountInBase;
+					const decimalIndex = amount.indexOf(".");
+					if(decimalIndex === -1) {
+					
+						// Set amount in base to be in amount in the correct number base
+						amountInBase = amount + "0".repeat(NUMBER_OF_DECIMALS);
+					}
+					
+					// Otherwise
+					else {
+					
+						// Set amount in base to be in amount in the correct number base
+						amountInBase = amount.replace(".", "") + "0".repeat(NUMBER_OF_DECIMALS - amount["length"] + decimalIndex + "."["length"]);
+					}
+					
+					// Remove leading zeros from amount in base
+					amountInBase = amountInBase.replace(/^0+/u, "");
+					
+					// Get message
+					const message = (new TextEncoder()).encode(kernelExcess.toLowerCase() + senderPaymentProofAddress + amountInBase);
+					
+					// Check recipient payment proof address's length
+					let signatureIsValid;
+					let publicKey;
+					switch(recipientPaymentProofAddress["length"]) {
+					
+						// Tor address length
+						case TOR_ADDRESS_LENGTH:
+						
+							// Try
+							try {
+							
+								// Get recipient's public key
+								publicKey = torAddressToPublicKey(recipientPaymentProofAddress);
+							}
+							
+							// Catch errors
+							catch(error) {
+							
+								// Throw error
+								throw "Invalid recipient payment proof address.";
+							}
+							
+							// Check if recipient payment proof signature is invalid
+							if(recipientPaymentProofSignature["length"] !== ED25519_SIGNATURE_LENGTH * HEX_NUMBER_LENGTH) {
+							
+								// Throw error
+								throw "Invalid recipient payment proof signature.";
+							}
+							
+							// Set signature is valid to if the recipient payment proof signature is correct for the message
+							signatureIsValid = Ed25519.verify(message, fromHexString(recipientPaymentProofSignature), publicKey) === true;
+							
+							// Break
+							break;
+						
+						// MQS address length
+						case MQS_ADDRESS_LENGTH:
+						
+							// Try
+							try {
+							
+								// Get recipient's public key
+								publicKey = mqsAddressToPublicKey(recipientPaymentProofAddress);
+							}
+							
+							// Catch errors
+							catch(error) {
+							
+								// Throw error
+								throw "Invalid recipient payment proof address.";
+							}
+							
+							// Get message hash
+							const messageHash = new Uint8Array(sha256.arrayBuffer(message));
+							
+							// Set signature is valid to if the recipient payment proof signature is correct for the message hash
+							signatureIsValid = Secp256k1Zkp.verifyMessageHashSignature(fromHexString(recipientPaymentProofSignature), messageHash, publicKey) === true;
+							
+							// Break
+							break;
+					}
+					
+					// Check if signature is valid
+					if(signatureIsValid === true) {
+					
+						// Add alert
+						addAlert("The payment proof is valid.");
+						
+						// Add alert
+						addAlert("The person with the " + recipientPaymentProofAddress + " payment proof address received a payment of " + amount + " MWC from the person with the " + senderPaymentProofAddress + " payment proof address if the transaction exists on the MimbleWimble Coin blockchain.");
+					}
+					
+					// Otherwise
+					else {
+					
+						// Add alert
+						addAlert("The payment proof is invalid.");
+					}
+				}
+				
+				// Catch errors
+				catch(error) {
+				
+					// Add alert
+					addAlert(error);
+					
+					// Add alert
+					addAlert("Verifying the payment proof failed.");
+				}
+				
+				// Enable button
+				button["disabled"] = false;
+			});
+			
+			// Loop while alerts has an alert
+			while(alerts["firstChild"] !== null) {
+			
+				// Remove alert from alerts
+				alerts.removeChild(alerts["firstChild"]);
+			}
+			
+			// Add alert
+			addAlert("Ready.");
+			
+			// Enable button
+			document.querySelector("button")["disabled"] = false;
+		});
+		
+		
+		// Supporting function implementation
+		
+		// Add alert
+		function addAlert(text) {
+		
+			// Get alerts
+			const alerts = document.querySelector("div");
+		
+			// Create alert
+			const alert = document.createElement("p");
+			
+			// Add alert to alerts
+			alerts.appendChild(alert);
+			
+			// Set alert's text
+			alert["textContent"] = text;
+		}
+		
+		// From hex string
+		function fromHexString(hexString) {
+		
+			// Hex character to value
+			const HEX_CHARACTER_TO_VALUE = {
+				
+				// Zero
+				"0": 0x00,
+				
+				// One
+				"1": 0x01,
+				
+				// Two
+				"2": 0x02,
+				
+				// Three
+				"3": 0x03,
+				
+				// Four
+				"4": 0x04,
+				
+				// Five
+				"5": 0x05,
+				
+				// Six
+				"6": 0x06,
+				
+				// Seven
+				"7": 0x07,
+				
+				// Eight
+				"8": 0x08,
+				
+				// Nine
+				"9": 0x09,
+				
+				// Uppercase a
+				"A": 0x0A,
+				
+				// Uppercase b
+				"B": 0x0B,
+				
+				// Uppercase c
+				"C": 0x0C,
+				
+				// Uppercase d
+				"D": 0x0D,
+				
+				// Uppercase e
+				"E": 0x0E,
+				
+				// Uppercase f
+				"F": 0x0F,
+				
+				// Lowercase a
+				"a": 0x0A,
+				
+				// Lowercase b
+				"b": 0x0B,
+				
+				// Lowercase c
+				"c": 0x0C,
+				
+				// Lowercase d
+				"d": 0x0D,
+				
+				// Lowercase e
+				"e": 0x0E,
+				
+				// Lowercase f
+				"f": 0x0F
+			};
+			
+			// Hex number length
+			const HEX_NUMBER_LENGTH = "FF"["length"];
+			
+			// Bits in a byte
+			const BITS_IN_A_BYTE = 8;
+		
+			// Initialize result
+			const result = new Uint8Array(hexString["length"] / HEX_NUMBER_LENGTH);
+
+			// Go through all bytes in the result
+			for(let i = 0; i < result["length"]; ++i) {
+			
+				// Set character as a byte in the result
+				result[i] = (HEX_CHARACTER_TO_VALUE[hexString[i * HEX_NUMBER_LENGTH]] << (BITS_IN_A_BYTE / 2)) | HEX_CHARACTER_TO_VALUE[hexString[i * HEX_NUMBER_LENGTH + 1]];
+			}
+			
+			// Return result
+			return result;
+		}
+		
+		// Tor address to public key
+		function torAddressToPublicKey(torAddress) {
+		
+			// Ed25519 public key length
+			const ED25519_PUBLIC_KEY_LENGTH = 32;
+			
+			// Tor address checksum length
+			const TOR_ADDRESS_CHECKSUM_LENGTH = 2;
+			
+			// Tor address version
+			const TOR_ADDRESS_VERSION = 3;
+			
+			// Tor address checksum seed
+			const TOR_ADDRESS_CHECKSUM_SEED = (new TextEncoder()).encode(".onion checksum");
+			
+			// Decode Tor address
+			const decodedAddress = new Uint8Array(base32.decode.asBytes(torAddress.toUpperCase()));
+			
+			// Check if decoded address's length is invalid
+			if(decodedAddress["length"] !== ED25519_PUBLIC_KEY_LENGTH + TOR_ADDRESS_CHECKSUM_LENGTH + [TOR_ADDRESS_VERSION]["length"]) {
+			
+				// Throw error
+				throw "Invalid Tor address.";
+			}
+			
+			// Get decoded address's expected checksum
+			const checksumData = new Uint8Array(TOR_ADDRESS_CHECKSUM_SEED["length"] + ED25519_PUBLIC_KEY_LENGTH + [TOR_ADDRESS_VERSION]["length"]);
+			checksumData.set(TOR_ADDRESS_CHECKSUM_SEED);
+			checksumData.set(decodedAddress.subarray(0, ED25519_PUBLIC_KEY_LENGTH), TOR_ADDRESS_CHECKSUM_SEED["length"]);
+			checksumData[TOR_ADDRESS_CHECKSUM_SEED["length"] + ED25519_PUBLIC_KEY_LENGTH] = TOR_ADDRESS_VERSION;
+			
+			const expectedChecksum = new Uint8Array(sha3_256.arrayBuffer(checksumData));
+			
+			// Go through all bytes in the decoded address's checksum
+			for(let i = 0; i < TOR_ADDRESS_CHECKSUM_LENGTH; ++i) {
+			
+				// Check if byte is invalid
+				if(decodedAddress[ED25519_PUBLIC_KEY_LENGTH + i] !== expectedChecksum[i]) {
+				
+					// Throw error
+					throw "Invalid Tor address.";
+				}
+			}
+			
+			// Check if decoded address's version is invalid
+			if(decodedAddress[ED25519_PUBLIC_KEY_LENGTH + TOR_ADDRESS_CHECKSUM_LENGTH] !== TOR_ADDRESS_VERSION) {
+			
+				// Throw error
+				throw "Invalid Tor address.";
+			}
+			
+			// Return decoded address's Ed25519 public key
+			return decodedAddress.subarray(0, ED25519_PUBLIC_KEY_LENGTH);
+		}
+		
+		// MQS address to public key
+		function mqsAddressToPublicKey(mqsAddress) {
+		
+			// MQS address version
+			const MQS_ADDRESS_VERSION = [1, 69];
+			
+			// Secp256k1 public key length
+			const SECP256K1_PUBLIC_KEY_LENGTH = 33;
+			
+			// Decode MQS address
+			const decodedAddress = Base58.decodeWithChecksum(mqsAddress);
+			
+			// Check if decoded address's length is invalid
+			if(decodedAddress["length"] !== MQS_ADDRESS_VERSION["length"] + SECP256K1_PUBLIC_KEY_LENGTH) {
+			
+				// Throw error
+				throw "Invalid MQS address.";
+			}
+			
+			// Go through all bytes in the decoded address's version
+			for(let i = 0; i < MQS_ADDRESS_VERSION["length"]; ++i) {
+			
+				// Check if byte is invalid
+				if(decodedAddress[i] !== MQS_ADDRESS_VERSION[i]) {
+				
+					// Throw error
+					throw "Invalid MQS address.";
+				}
+			}
+			
+			// Check if decoded address's secp256k1 public key is invalid
+			if(Secp256k1Zkp.isValidPublicKey(decodedAddress.subarray(MQS_ADDRESS_VERSION["length"])) !== true) {
+			
+				// Throw error
+				throw "Invalid MQS address.";
+			}
+			
+			// Return decoded address's secp256k1 public key
+			return decodedAddress.subarray(MQS_ADDRESS_VERSION["length"]);
+		}
+	</script>
+</head>
+<body>
+	<h3>MimbleWimble Coin Payment Proof Verifier</h3>
+	<form>
+		<label for="kernel_excess">Kernel excess:</label>
+		<input type="text" size="175" name="kernel_excess" pattern="[0-9a-fA-F]{66}" required value="086bd8520e55d138418727fa06fac9323b08b35ff7c16ec2a5a7698df2e44007f2">
+		<br>
+		<br>
+		<label for="sender_payment_proof_address">Sender payment proof address:</label>
+		<input type="text" size="175" name="sender_payment_proof_address" pattern="[abcdefghijklmnopqrstuvwxyz234567]{56}|[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{52}" required value="qadwjacu2wfln7jxug237fe7pwzguahnkp2xhfr6eokpsyb2uaejj4yd">
+		<br>
+		<br>
+		<label for="amount">Amount:</label>
+		<input type="text" size="175" name="amount" pattern="0\.\d{0,8}[1-9]|[1-9]\d*(?:\.\d{0,8}[1-9])?" required value="0.996">
+		<br>
+		<br>
+		<label for="recipient_payment_proof_address">Recipient payment proof address:</label>
+		<input type="text" size="175" name="recipient_payment_proof_address" pattern="[abcdefghijklmnopqrstuvwxyz234567]{56}|[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{52}" required value="rz2x7raufv3rfyo5zk7tbctyxokfdie6xqudxgqqh3p6wg5xqemhv5id">
+		<br>
+		<br>
+		<label for="recipient_payment_proof_signature">Recipient payment proof signature:</label>
+		<input type="text" size="175" name="recipient_payment_proof_signature" pattern="(?:[0-9a-fA-F]{2}){1,72}" required value="135795266e4f02dedd8c177811f67b57cf701b4873d4e4a6f50fede97bf33ef15a489efb9231fada412735604582ee68437719466d86589d2119f6003ce01f05">
+		<br>
+		<br>
+		<button disabled>Verify Payment Proof</button>
+	</form>
+	<div>
+		<p>Loading…</p>
+	</div>
+</body>
+</html>
