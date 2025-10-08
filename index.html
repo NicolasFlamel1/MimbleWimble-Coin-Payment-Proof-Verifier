@@ -31,6 +31,9 @@
 			// Get alerts
 			const alerts = document.querySelector("div");
 			
+			// Get button
+			const button = document.querySelector("button");
+			
 			// Form submit event
 			form.addEventListener("submit", function(event) {
 			
@@ -49,9 +52,6 @@
 				// Hex number length
 				const HEX_NUMBER_LENGTH = "FF"["length"];
 				
-				// Get button
-				const button = document["activeElement"];
-			
 				// Prevent default
 				event.preventDefault();
 				
@@ -253,7 +253,7 @@
 			addAlert("Ready.");
 			
 			// Enable button
-			document.querySelector("button")["disabled"] = false;
+			button["disabled"] = false;
 		});
 		
 		
