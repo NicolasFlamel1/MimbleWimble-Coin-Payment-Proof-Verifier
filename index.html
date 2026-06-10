@@ -427,8 +427,11 @@
 		// MQS address to public key
 		function mqsAddressToPublicKey(mqsAddress) {
 		
-			// MQS address version
-			const MQS_ADDRESS_VERSION = [1, 69];
+			// MQS mainnet address version
+			const MQS_MAINNET_ADDRESS_VERSION = [1, 69];
+			
+			// MQS floonet address version
+			const MQS_FLOONET_ADDRESS_VERSION = [1, 121];
 			
 			// Secp256k1 public key length
 			const SECP256K1_PUBLIC_KEY_LENGTH = 33;
@@ -437,32 +440,58 @@
 			const decodedAddress = Base58.decodeWithChecksum(mqsAddress);
 			
 			// Check if decoded address's length is invalid
-			if(decodedAddress["length"] !== MQS_ADDRESS_VERSION["length"] + SECP256K1_PUBLIC_KEY_LENGTH) {
+			if(decodedAddress["length"] !== MQS_MAINNET_ADDRESS_VERSION["length"] + SECP256K1_PUBLIC_KEY_LENGTH) {
 			
 				// Throw error
 				throw "Invalid MQS address.";
 			}
 			
 			// Go through all bytes in the decoded address's version
-			for(let i = 0; i < MQS_ADDRESS_VERSION["length"]; ++i) {
+			let isMainnet = true;
+			for(let i = 0; i < MQS_MAINNET_ADDRESS_VERSION["length"]; ++i) {
 			
-				// Check if byte is invalid
-				if(decodedAddress[i] !== MQS_ADDRESS_VERSION[i]) {
+				// Check if byte is invalid for a mainnet address version
+				if(decodedAddress[i] !== MQS_MAINNET_ADDRESS_VERSION[i]) {
 				
-					// Throw error
-					throw "Invalid MQS address.";
+					// Set is mainnet to false
+					isMainnet = false;
+					
+					// Break
+					break;
 				}
 			}
 			
+			// Go through all bytes in the decoded address's version
+			let isFloonet = true;
+			for(let i = 0; i < MQS_FLOONET_ADDRESS_VERSION["length"]; ++i) {
+			
+				// Check if byte is invalid for a floonet address version
+				if(decodedAddress[i] !== MQS_FLOONET_ADDRESS_VERSION[i]) {
+				
+					// Set is floonet to false
+					isFloonet = false;
+					
+					// Break
+					break;
+				}
+			}
+			
+			// Check if decoded address's version is invalid
+			if(isMainnet === false && isFloonet === false) {
+			
+				// Throw error
+				throw "Invalid MQS address.";
+			}
+			
 			// Check if decoded address's secp256k1 public key is invalid
-			if(Secp256k1Zkp.isValidPublicKey(decodedAddress.subarray(MQS_ADDRESS_VERSION["length"])) !== true) {
+			if(Secp256k1Zkp.isValidPublicKey(decodedAddress.subarray(MQS_MAINNET_ADDRESS_VERSION["length"])) !== true) {
 			
 				// Throw error
 				throw "Invalid MQS address.";
 			}
 			
 			// Return decoded address's secp256k1 public key
-			return decodedAddress.subarray(MQS_ADDRESS_VERSION["length"]);
+			return decodedAddress.subarray(MQS_MAINNET_ADDRESS_VERSION["length"]);
 		}
 	</script>
 </head>
